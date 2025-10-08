@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { itemsActions } from "../store/itemsSlice";
 import { fetchStatusActions } from "../store/fetchStatusSlice";
@@ -6,103 +6,95 @@ import { fetchStatusActions } from "../store/fetchStatusSlice";
 const FetchItems = () => {
   const fetchStatus = useSelector((store) => store.fetchStatus);
   const dispatch = useDispatch();
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (fetchStatus.fetchDone) return;
 
     dispatch(fetchStatusActions.markFetchingStarted());
+    setError(null);
     
-    // Mock data since no backend server is running
-    const mockItems = [
-      {
-        id: 1,
-        image: "images/1.jpg",
-        company: "Nike",
-        item_name: "Air Max 270",
-        current_price: 12999,
-        original_price: 15999,
-        discount_percentage: 19,
-        rating: { stars: 4.5, count: 120 }
-      },
-      {
-        id: 2,
-        image: "images/2.jpg",
-        company: "Adidas",
-        item_name: "Ultraboost 22",
-        current_price: 18999,
-        original_price: 21999,
-        discount_percentage: 14,
-        rating: { stars: 4.3, count: 89 }
-      },
-      {
-        id: 3,
-        image: "images/3.jpg",
-        company: "Puma",
-        item_name: "RS-X Reinvention",
-        current_price: 8999,
-        original_price: 11999,
-        discount_percentage: 25,
-        rating: { stars: 4.1, count: 67 }
-      },
-      {
-        id: 4,
-        image: "images/4.jpg",
-        company: "Reebok",
-        item_name: "Classic Leather",
-        current_price: 5999,
-        original_price: 7999,
-        discount_percentage: 25,
-        rating: { stars: 4.4, count: 156 }
-      },
-      {
-        id: 5,
-        image: "images/5.jpg",
-        company: "Converse",
-        item_name: "Chuck Taylor All Star",
-        current_price: 3999,
-        original_price: 4999,
-        discount_percentage: 20,
-        rating: { stars: 4.6, count: 234 }
-      },
-      {
-        id: 6,
-        image: "images/6.jpg",
-        company: "Vans",
-        item_name: "Old Skool",
-        current_price: 4999,
-        original_price: 6499,
-        discount_percentage: 23,
-        rating: { stars: 4.2, count: 98 }
-      },
-      {
-        id: 7,
-        image: "images/7.jpg",
-        company: "New Balance",
-        item_name: "574 Core",
-        current_price: 7999,
-        original_price: 9999,
-        discount_percentage: 20,
-        rating: { stars: 4.3, count: 112 }
-      },
-      {
-        id: 8,
-        image: "images/8.jpg",
-        company: "Fila",
-        item_name: "Disruptor II",
-        current_price: 6999,
-        original_price: 8999,
-        discount_percentage: 22,
-        rating: { stars: 4.0, count: 76 }
-      }
-    ];
+    // Fetch items from backend API
+    const fetchItemsFromAPI = async () => {
+      try {
+        console.log('Fetching items from backend API...');
+        const response = await fetch('http://localhost:8080/api/items');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const items = await response.json();
+        console.log('Items received from API:', items);
+        
+        // Transform backend data to match frontend format
+        const transformedItems = items.map(item => ({
+          id: item.id,
+          image: item.image,
+          company: item.company,
+          item_name: item.itemName,
+          current_price: item.currentPrice,
+          original_price: item.originalPrice,
+          discount_percentage: item.discountPercentage,
+          rating: { 
+            stars: item.ratingStars, 
+            count: item.ratingCount 
+          },
+          category: item.category
+        }));
 
-    // Simulate API delay
-    setTimeout(() => {
-      dispatch(fetchStatusActions.markFetchDone());
-      dispatch(fetchStatusActions.markFetchingFinished());
-      dispatch(itemsActions.addInitialItems(mockItems));
-    }, 1000);
+        console.log('Transformed items:', transformedItems);
+        dispatch(fetchStatusActions.markFetchDone());
+        dispatch(fetchStatusActions.markFetchingFinished());
+        dispatch(itemsActions.addInitialItems(transformedItems));
+        
+      } catch (error) {
+        console.error('Error fetching items from backend:', error);
+        setError(error.message);
+        dispatch(fetchStatusActions.markFetchingFinished());
+        // Don't mark as done so user can retry
+      }
+    };
+
+    fetchItemsFromAPI();
   }, [fetchStatus, dispatch]);
+
+  // Show error message if API call failed
+  if (error) {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center', 
+        backgroundColor: '#ffebee', 
+        border: '1px solid #f44336', 
+        borderRadius: '4px',
+        margin: '20px',
+        color: '#c62828'
+      }}>
+        <h3>Failed to load items from backend</h3>
+        <p><strong>Error:</strong> {error}</p>
+        <p>Please make sure the backend server is running on http://localhost:8080</p>
+        <button 
+          onClick={() => {
+            setError(null);
+            dispatch(fetchStatusActions.markFetchingFinished());
+            // Reset fetch status to allow retry
+            window.location.reload();
+          }}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return <></>;
 };

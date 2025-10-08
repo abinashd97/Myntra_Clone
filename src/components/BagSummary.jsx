@@ -1,6 +1,8 @@
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 const BagSummary = () => {
+  const navigate = useNavigate();
   const bagItemIds = useSelector((state) => state.bag);
   const items = useSelector((state) => state.items);
   const finalItems = items.filter((item) => {
@@ -44,7 +46,11 @@ const BagSummary = () => {
           <span className="price-item-value">₹{finalPayment}</span>
         </div>
       </div>
-      <button className="btn-place-order">
+      <button 
+        className="btn-place-order"
+        onClick={() => navigate('/order-summary')}
+        disabled={bagItemIds.length === 0}
+      >
         <div className="css-xjhrni">PLACE ORDER</div>
       </button>
     </div>
